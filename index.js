@@ -1,6 +1,7 @@
 const express = require('express');
 const { MongoClient } = require('mongodb');
 const cors = require('cors');
+const ObjectId = require('mongodb').ObjectId;
 const app = express();
 const port = 4000;
 
@@ -13,13 +14,26 @@ app.use(express.json());
 
 
 const uri = "mongodb+srv://mydb-1:YG1Jxvo9UIJqnAyn@cluster0.fuz1d.mongodb.net/myFirstDatabase?retryWrites=true&w=majority";
-const client = new MongoClient(uri, { useNewUrlParser: true, useUnifieldTopology: true });
+const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
 
 async function run() {
     try {
         await client.connect();
         const database = client.db('foodMaster');
         const usersCollection = database.collection('users');
+
+
+
+
+        // get api
+
+        app.get('/users', async (req, res) => {
+            const cursor = usersCollection.find({});
+            const users = await cursor.toArray();
+            res.send(users);
+        });
+
+
 
         // POST API
 
@@ -29,7 +43,49 @@ async function run() {
             console.log('Hiting the post', req.body)
             console.log('added user', result);
             res.json(result);
-        })
+        });
+
+
+        app.get('/users/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectId(id) };
+            const user = await usersCollection.findOne(query);
+            // console.log('load user with id: ', id);
+            res.send(user);
+        });
+
+
+
+        // update api
+
+
+        app.put('/users/:id', async (req, res) => {
+            const id = req.params.id;
+            const updatedUser = req.body;
+            const filter = { _id: ObjectId(id) };
+            const options = { upsert: true };
+            const updateDoc = {
+                $set: {
+                    name: updatedUser.name,
+                    email: updatedUser.email
+                },
+            };
+            const result = await usersCollection.updateOne(filter, updateDoc, options)
+            console.log('updating', id)
+            res.json(result)
+        });
+
+        // delete api
+
+        app.delete('/users/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectId(id) };
+            const result = await usersCollection.deleteOne(query);
+
+            console.log('deleting user with id ', result);
+
+            res.json(result);
+        });
 
     }
     finally {
@@ -47,5 +103,5 @@ app.get('/', (req, res) => {
 
 app.listen(port, () => {
     // ata cmd te show hoy
-    console.log(' Running server on port ha ha ha', 5000);
+    console.log(' Running server on port ha ha ha', port);
 })
